@@ -1,8 +1,8 @@
 package rubex
 
 /*
-#cgo CFLAGS: -I../../clibs/include
-#cgo LDFLAGS: -L../../clibs/lib -lonig
+#cgo CFLAGS: -I/usr/local/include
+#cgo LDFLAGS: -L/usr/local/lib -lonig
 #include <stdlib.h>
 #include <oniguruma.h>
 #include "chelper.h"
@@ -40,6 +40,7 @@ type Regexp struct {
 	pattern        string
 	regex          C.OnigRegex
 	region         *C.OnigRegion
+	encoding       C.OnigEncoding
 	errorInfo      *C.OnigErrorInfo
 	errorBuf       *C.char
 	matchData      *MatchData
@@ -53,7 +54,7 @@ func NewRegexp(pattern string, option int) (re *Regexp, err error) {
 
 	mutex.Lock()
 	defer mutex.Unlock()
-	error_code := C.NewOnigRegex(patternCharPtr, C.int(len(pattern)), C.int(option), &re.regex, &re.region, &re.errorInfo, &re.errorBuf)
+	error_code := C.NewOnigRegex(patternCharPtr, C.int(len(pattern)), C.int(option), &re.regex, &re.region, &re.encoding, &re.errorInfo, &re.errorBuf)
 	if error_code != C.ONIG_NORMAL {
 		err = errors.New(C.GoString(re.errorBuf))
 	} else {
@@ -123,10 +124,10 @@ func (re *Regexp) getNamedGroupInfo() (namedGroupInfo NamedGroupInfo) {
 		//try to get the names
 		bufferSize := len(re.pattern) * 2
 		nameBuffer := make([]byte, bufferSize)
-		groupNumbers := make([]int, numNamedGroups)
+		groupNumbers := make([]int32, numNamedGroups)
 		bufferPtr := unsafe.Pointer(&nameBuffer[0])
 		numbersPtr := unsafe.Pointer(&groupNumbers[0])
-		length := int(C.GetCaptureNames(re.regex, bufferPtr, (C.int)(bufferSize), (*C.int)(numbersPtr)))
+		length := int(C.GetCaptureNames(re.regex, bufferPtr, (C.int)(bufferSize), (*C.int32_t)(numbersPtr)))
 		if length > 0 {
 			namesAsBytes := bytes.Split(nameBuffer[:length], ([]byte)(";"))
 			if len(namesAsBytes) != numNamedGroups {
@@ -134,7 +135,7 @@ func (re *Regexp) getNamedGroupInfo() (namedGroupInfo NamedGroupInfo) {
 			}
 			for i, nameAsBytes := range namesAsBytes {
 				name := string(nameAsBytes)
-				namedGroupInfo[name] = groupNumbers[i]
+				namedGroupInfo[name] = int(groupNumbers[i])
 			}
 		} else {
 			log.Fatalf("could not get the capture group names from %q", re.String())
@@ -174,7 +175,7 @@ func (re *Regexp) find(b []byte, n int, offset int) (match []int) {
 	capturesPtr := unsafe.Pointer(&(matchData.indexes[matchData.count][0]))
 	numCaptures := 0
 	numCapturesPtr := unsafe.Pointer(&numCaptures)
-	pos := int(C.SearchOnigRegex((ptr), C.int(n), C.int(offset), C.int(ONIG_OPTION_DEFAULT), re.regex, re.region, re.errorInfo, (*C.char)(nil), (*C.int)(capturesPtr), (*C.int)(numCapturesPtr)))
+	pos := int(C.SearchOnigRegex((ptr), C.int(n), C.int(offset), C.int(ONIG_OPTION_DEFAULT), re.regex, re.region, re.errorInfo, (*C.char)(nil), (*C.int64_t)(capturesPtr), (*C.int64_t)(numCapturesPtr)))
 	if pos >= 0 {
 		if numCaptures <= 0 {
 			panic("cannot have 0 captures when processing a match")
@@ -201,7 +202,7 @@ func (re *Regexp) match(b []byte, n int, offset int) bool {
 		b = []byte{0}
 	}
 	ptr := unsafe.Pointer(&b[0])
-	pos := int(C.SearchOnigRegex((ptr), C.int(n), C.int(offset), C.int(ONIG_OPTION_DEFAULT), re.regex, re.region, re.errorInfo, (*C.char)(nil), (*C.int)(nil), (*C.int)(nil)))
+	pos := int(C.SearchOnigRegex((ptr), C.int(n), C.int(offset), C.int(ONIG_OPTION_DEFAULT), re.regex, re.region, re.errorInfo, (*C.char)(nil), (*C.int64_t)(nil), (*C.int64_t)(nil)))
 	return pos >= 0
 }
 
@@ -512,6 +513,7 @@ func (re *Regexp) replaceAll(src, repl []byte, replFunc func([]byte, []byte, map
 			}
 		} else {
 			for name, j := range re.namedGroupInfo {
+				println(name, j)
 				capturedBytes[name] = getCapture(src, match[2*j], match[2*j+1])
 			}
 		}

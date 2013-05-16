@@ -7,7 +7,7 @@
 #include "chelper.h"
 
 int NewOnigRegex( char *pattern, int pattern_length, int option,
-                  OnigRegex *regex, OnigRegion **region, OnigErrorInfo **error_info, char **error_buffer) {
+                  OnigRegex *regex, OnigRegion **region, OnigEncoding *encoding, OnigErrorInfo **error_info, char **error_buffer) {
     int ret = ONIG_NORMAL;
     int error_msg_len = 0;
 
@@ -17,13 +17,15 @@ int NewOnigRegex( char *pattern, int pattern_length, int option,
     *error_info = (OnigErrorInfo *) malloc(sizeof(OnigErrorInfo));
     memset(*error_info, 0, sizeof(OnigErrorInfo));
 
+    *encoding = (void*)ONIG_ENCODING_UTF8;
+
     *error_buffer = (char*) malloc(ONIG_MAX_ERROR_MESSAGE_LEN * sizeof(char));
 
     memset(*error_buffer, 0, ONIG_MAX_ERROR_MESSAGE_LEN * sizeof(char));
 
     *region = onig_region_new();
 
-    ret = onig_new_default(regex, pattern_start, pattern_end, (OnigOptionType)(option), *error_info);
+    ret = onig_new(regex, pattern_start, pattern_end, (OnigOptionType)(option), *encoding, OnigDefaultSyntax, *error_info);
   
     if (ret != ONIG_NORMAL) {
         error_msg_len = onig_error_code_to_str((unsigned char*)(*error_buffer), ret, *error_info);
@@ -36,7 +38,7 @@ int NewOnigRegex( char *pattern, int pattern_length, int option,
 }
 
 int SearchOnigRegex( void *str, int str_length, int offset, int option,
-                  OnigRegex regex, OnigRegion *region, OnigErrorInfo *error_info, char *error_buffer, int *captures, int *numCaptures) {
+                  OnigRegex regex, OnigRegion *region, OnigErrorInfo *error_info, char *error_buffer, int64_t *captures, int64_t *numCaptures) {
     int ret = ONIG_MISMATCH;
     int error_msg_len = 0;
 #ifdef BENCHMARK_CHELP
@@ -168,7 +170,7 @@ int name_callback(const UChar* name, const UChar* name_end,
 	return 0;  /* 0: continue */
 }
 
-int GetCaptureNames(OnigRegex reg, void *buffer, int bufferSize, int* groupNumbers) {
+int GetCaptureNames(OnigRegex reg, void *buffer, int bufferSize, int32_t* groupNumbers) {
 	int ret;
 	group_info_t groupInfo;
 	groupInfo.nameBuffer = (char*)buffer;
