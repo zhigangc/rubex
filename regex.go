@@ -513,7 +513,6 @@ func (re *Regexp) replaceAll(src, repl []byte, replFunc func([]byte, []byte, map
 			}
 		} else {
 			for name, j := range re.namedGroupInfo {
-				println(name, j)
 				capturedBytes[name] = getCapture(src, match[2*j], match[2*j+1])
 			}
 		}
