@@ -38,7 +38,7 @@ int NewOnigRegex( char *pattern, int pattern_length, int option,
 }
 
 int SearchOnigRegex( void *str, int str_length, int offset, int option,
-                  OnigRegex regex, OnigRegion *region, OnigErrorInfo *error_info, char *error_buffer, int *captures, int *numCaptures) {
+                  OnigRegex regex, OnigRegion *region, OnigErrorInfo *error_info, char *error_buffer, int64_t *captures, int64_t *numCaptures) {
     int ret = ONIG_MISMATCH;
     int error_msg_len = 0;
 #ifdef BENCHMARK_CHELP
@@ -170,7 +170,7 @@ int name_callback(const UChar* name, const UChar* name_end,
 	return 0;  /* 0: continue */
 }
 
-int GetCaptureNames(OnigRegex reg, void *buffer, int bufferSize, int* groupNumbers) {
+int GetCaptureNames(OnigRegex reg, void *buffer, int bufferSize, int32_t* groupNumbers) {
 	int ret;
 	group_info_t groupInfo;
 	groupInfo.nameBuffer = (char*)buffer;
